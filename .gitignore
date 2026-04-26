@@ -1,0 +1,17 @@
+# Playwright MCP debug logs
+.playwright-mcp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Screenshots and test artifacts
+*.png
+*.jpg
+*.jpeg

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简历小师 — 专业简历制作工具</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%2338688e'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'>简</text></svg>">
+</head>
+<body>
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <div class="topbar__logo">简</div>
+      <h1 class="topbar__title">简历小师</h1>
+    </div>
+    <div class="topbar__actions">
+      <button class="btn btn--secondary" id="btn-template" popovertarget="template-menu" title="切换模板">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="5" height="12" rx="1"/>
+          <rect x="9" y="2" width="5" height="5" rx="1"/>
+          <rect x="9" y="9" width="5" height="5" rx="1"/>
+        </svg>
+        <span id="btn-template-label">经典模板</span>
+      </button>
+
+      <!-- Template Switcher Popover -->
+      <div id="template-menu" popover class="template-menu">
+        <button class="template-menu__item" data-template="classic">
+          <span class="template-menu__preview template-menu__preview--classic"></span>
+          <span class="template-menu__name">经典</span>
+        </button>
+        <button class="template-menu__item" data-template="modern">
+          <span class="template-menu__preview template-menu__preview--modern"></span>
+          <span class="template-menu__name">现代</span>
+        </button>
+        <button class="template-menu__item" data-template="creative">
+          <span class="template-menu__preview template-menu__preview--creative"></span>
+          <span class="template-menu__name">创意</span>
+        </button>
+      </div>
+      <button class="btn btn--secondary" id="btn-ai-toggle" title="AI 助手">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1a5 5 0 015 5v2a5 5 0 01-5 5H6l-3 2v-2a5 5 0 01-5-5V6a5 5 0 015-5h2z"/>
+          <circle cx="6" cy="7" r="0.5" fill="currentColor"/>
+          <circle cx="10" cy="7" r="0.5" fill="currentColor"/>
+        </svg>
+        <span id="btn-ai-toggle-label">AI 助手</span>
+      </button>
+
+      <button class="btn btn--secondary" id="btn-save" title="保存简历">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 13H3a1 1 0 01-1-1V4a1 1 0 011-1h7l3 3v6a1 1 0 01-1 1z"/>
+          <path d="M5 13V9h6v4"/>
+        </svg>
+        <span>存档</span>
+      </button>
+
+      <button class="btn btn--primary" id="btn-export" title="导出PDF">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/>
+          <path d="M8 2v8"/>
+          <path d="M5 7l3 3 3-3"/>
+        </svg>
+        导出 PDF
+      </button>
+    </div>
+    <div class="topbar__save-info">
+      <span id="save-indicator">尚未保存</span>
+    </div>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <main class="main">
+
+    <!-- ===== SAVE / LOAD DIALOG ===== -->
+    <dialog class="save-dialog" id="save-dialog">
+      <div class="save-dialog__header">
+        <h2 class="save-dialog__title">存档管理</h2>
+        <button class="save-dialog__close" id="save-dialog-close" aria-label="关闭">&times;</button>
+      </div>
+      <div class="save-dialog__body">
+        <div class="save-dialog__section">
+          <label class="field__label" for="save-slot-name">存档名称</label>
+          <div class="save-dialog__input-row">
+            <input class="field__input" id="save-slot-name" value="默认存档" placeholder="输入存档名称...">
+            <button class="btn btn--primary" id="save-dialog-save">保存</button>
+            <button class="btn btn--secondary" id="save-dialog-saveas">另存为...</button>
+          </div>
+        </div>
+        <div class="save-dialog__section">
+          <label class="field__label">已有存档</label>
+          <div class="save-dialog__list" id="save-slot-list">
+            <!-- Slots rendered by JS -->
+            <div class="save-dialog__empty">暂无存档</div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ===== EDITOR PANEL ===== -->
+    <aside class="editor" id="editor">
+
+      <!-- 个人信息 -->
+      <div class="section" data-section="personal">
+        <button class="section__header" aria-expanded="true">
+          <span>个人信息</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content">
+              <div class="field">
+                <label class="field__label">照片</label>
+                <div class="photo-upload" id="photo-upload">
+                  <div class="photo-upload__preview" id="photo-preview">
+                    <svg class="photo-upload__placeholder" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  </div>
+                  <div class="photo-upload__actions">
+                    <button type="button" class="btn btn--secondary btn--sm" id="btn-upload-photo">选择照片</button>
+                    <button type="button" class="btn btn--ghost btn--sm" id="btn-remove-photo" style="display:none">移除</button>
+                    <span class="photo-upload__hint">建议使用证件照</span>
+                  </div>
+                  <input type="file" id="photo-input" accept="image/*" style="display:none">
+                </div>
+              </div>
+              <div class="field--row" id="photo-style-controls" style="display:none">
+                <div class="field">
+                  <label class="field__label" for="photo-position">照片位置</label>
+                  <select class="field__input" id="photo-position" data-field="photoPosition">
+                    <option value="left">左侧</option>
+      <option value="right">右侧</option>
+      <option value="hidden">隐藏</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="photo-size">照片大小</label>
+                  <select class="field__input" id="photo-size" data-field="photoSize">
+                    <option value="small">小</option>
+                    <option value="medium" selected>中</option>
+                    <option value="large">大</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="name">姓名</label>
+                <input class="field__input" type="text" id="name" data-field="name" placeholder="张三" autocomplete="name">
+              </div>
+              <div class="field">
+                <label class="field__label" for="title">职位</label>
+                <input class="field__input" type="text" id="title" data-field="title" placeholder="前端工程师">
+              </div>
+              <div class="field--row">
+                <div class="field">
+                  <label class="field__label" for="phone">电话</label>
+                  <input class="field__input" type="tel" id="phone" data-field="phone" placeholder="138-0000-0000" autocomplete="tel">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="email">邮箱</label>
+                  <input class="field__input" type="email" id="email" data-field="email" placeholder="zhangsan@email.com" autocomplete="email">
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="address">地址</label>
+                <input class="field__input" type="text" id="address" data-field="address" placeholder="北京市朝阳区" autocomplete="address-level2">
+              </div>
+              <div class="field">
+                <label class="field__label" for="summary">个人简介</label>
+                <textarea class="field__textarea" id="summary" data-field="summary" placeholder="5年前端开发经验，精通 React、Vue 等主流框架，具备良好的团队协作能力和项目管理经验。"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工作经历 -->
+      <div class="section" data-section="work">
+        <button class="section__header" aria-expanded="true">
+          <span>工作经历</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content" id="work-entries">
+              <!-- Work entries rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 教育背景 -->
+      <div class="section" data-section="education">
+        <button class="section__header" aria-expanded="true">
+          <span>教育背景</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content" id="education-entries">
+              <!-- Education entries rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 技能特长 -->
+      <div class="section" data-section="skills">
+        <button class="section__header" aria-expanded="true">
+          <span>技能特长</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content">
+              <div class="field">
+                <label class="field__label" for="skills-input">技能（输入后按回车添加）</label>
+                <div class="skills-input" id="skills-container">
+                  <div id="skills-tags"></div>
+                  <input class="field__input skills-input__field" type="text" id="skills-input" placeholder="输入技能，如：JavaScript">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 项目经历 -->
+      <div class="section" data-section="projects">
+        <button class="section__header" aria-expanded="true">
+          <span>项目经历</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content" id="projects-entries">
+              <!-- Project entries rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 字体设置 -->
+      <div class="section" data-section="font">
+        <button class="section__header" aria-expanded="true">
+          <span>字体设置</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content">
+              <div class="field">
+                <label class="field__label" for="font-family">正文字体</label>
+                <select class="field__input" id="font-family" data-field="fontFamily">
+                  <option value="'Noto Sans SC', sans-serif">思源黑体</option>
+                  <option value="'Noto Serif SC', serif">思源宋体</option>
+                  <option value="'Source Han Sans SC', sans-serif">思源黑体 (本地)</option>
+                  <option value="'Source Han Serif SC', serif">思源宋体 (本地)</option>
+                  <option value="'LXGW WenKai', serif">霞鹜文楷</option>
+                  <option value="'ZCOOL XiaoWei', serif">站酷小薇</option>
+                  <option value="'Ma Shan Zheng', cursive">马善政楷书</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field__label" for="font-title">标题字体</label>
+                <select class="field__input" id="font-title" data-field="fontTitle">
+                  <option value="'Bitter', serif">Bitter</option>
+                  <option value="'Noto Serif SC', serif">思源宋体</option>
+                  <option value="'Noto Sans SC', sans-serif">思源黑体</option>
+                  <option value="'LXGW WenKai', serif">霞鹜文楷</option>
+                  <option value="'ZCOOL XiaoWei', serif">站酷小薇</option>
+                </select>
+              </div>
+              <div class="field--row">
+                <div class="field">
+                  <label class="field__label" for="font-size-base">正文字号</label>
+                  <select class="field__input" id="font-size-base" data-field="fontSizeBase">
+                    <option value="0.75">小 (10pt)</option>
+                    <option value="0.8">较小 (10.5pt)</option>
+                    <option value="0.85" selected>标准 (11pt)</option>
+                    <option value="0.9">中大 (12pt)</option>
+                    <option value="0.95">大 (12.5pt)</option>
+                    <option value="1">特大 (13pt)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="font-size-name">姓名字号</label>
+                  <select class="field__input" id="font-size-name" data-field="fontSizeName">
+                    <option value="1.5">小 (20pt)</option>
+                    <option value="1.625">较小 (22pt)</option>
+                    <option value="1.75" selected>标准 (24pt)</option>
+                    <option value="1.875">中大 (26pt)</option>
+                    <option value="2">大 (28pt)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field--row">
+                <div class="field">
+                  <label class="field__label" for="font-size-title">标题字号</label>
+                  <select class="field__input" id="font-size-title" data-field="fontSizeTitle">
+                    <option value="0.85">小 (11pt)</option>
+                    <option value="0.9">较小 (12pt)</option>
+                    <option value="0.95" selected>标准 (12.5pt)</option>
+                    <option value="1">中大 (13pt)</option>
+                    <option value="1.1">大 (14pt)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="line-height">行高</label>
+                  <select class="field__input" id="line-height" data-field="lineHeight">
+                    <option value="1.3">紧凑</option>
+                    <option value="1.4">较紧凑</option>
+                    <option value="1.5" selected>标准</option>
+                    <option value="1.6">较宽松</option>
+                    <option value="1.7">宽松</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ===== PREVIEW PANEL ===== -->
+    <section class="preview" id="preview" aria-label="简历预览">
+      <div class="preview__zoom-bar" id="zoom-bar">
+        <button class="btn btn--ghost preview__zoom-btn" id="btn-zoom-out" title="缩小">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10 10l3.5 3.5"/><path d="M5 7h4"/></svg>
+        </button>
+        <input type="range" class="preview__zoom-slider" id="zoom-slider" min="30" max="150" value="100" step="5">
+        <span class="preview__zoom-label" id="zoom-label">100%</span>
+        <button class="btn btn--ghost preview__zoom-btn" id="btn-zoom-in" title="放大">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10 10l3.5 3.5"/><path d="M5 7h4M7 5v4"/></svg>
+        </button>
+        <div class="preview__zoom-divider"></div>
+        <button class="btn btn--ghost preview__zoom-btn" id="btn-zoom-fit" title="适应窗口">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 2v12M2 5h12"/></svg>
+        </button>
+        <button class="btn btn--ghost preview__zoom-btn" id="btn-zoom-actual" title="实际大小">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/><path d="M5 6v4M6 5h4M6 11h4M11 6v4"/></svg>
+        </button>
+      </div>
+      <div class="preview__canvas" id="preview-canvas">
+        <div class="a4-page" id="a4-page">
+          <!-- Resume preview rendered by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI CHAT PANEL ===== -->
+    <aside class="ai-panel ai-panel--hidden" id="ai-panel">
+      <div class="ai-panel__header">
+        <span class="ai-panel__title">AI 助手</span>
+        <div class="ai-panel__header-actions">
+          <button class="btn btn--ghost" id="btn-ai-new-chat" title="新建对话">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v12M2 8h12"/>
+            </svg>
+          </button>
+          <button class="btn btn--ghost" id="btn-ai-history" title="历史对话">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="8" r="6"/>
+              <path d="M8 4v4l3 2"/>
+            </svg>
+          </button>
+          <button class="btn btn--ghost" id="btn-ai-settings" title="API 设置"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8h1.5M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg></button>
+          <button class="btn btn--ghost" id="btn-ai-close" title="关闭面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+        </div>
+      </div>
+      <div class="ai-history" id="ai-history" popover>
+        <div class="ai-history__header">
+          <span class="ai-history__title">历史对话</span>
+        </div>
+        <div class="ai-history__list" id="ai-history-list">
+          <!-- Conversation items rendered by JS -->
+        </div>
+      </div>
+      <div class="ai-panel__messages" id="ai-messages">
+        <!-- Chat messages rendered here -->
+      </div>
+      <div class="ai-panel__quick-actions">
+        <button class="ai-quick-btn" data-action="generate">生成</button>
+        <button class="ai-quick-btn" data-action="optimize">优化</button>
+        <button class="ai-quick-btn" data-action="diagnose">诊断</button>
+      </div>
+      <div class="ai-panel__input-area">
+        <textarea class="ai-panel__input" id="ai-input" placeholder="描述你的经历，AI帮你写简历..." rows="2"></textarea>
+        <button class="btn btn--primary ai-panel__send" id="ai-send" title="发送">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l12-6-6 12v-6h-6z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ===== API SETTINGS DIALOG ===== -->
+  <dialog class="ai-settings-dialog" id="ai-settings-dialog">
+    <form method="dialog" class="ai-settings-dialog__form" id="ai-settings-form">
+      <h2 class="ai-settings-dialog__title">API 设置</h2>
+      <div class="field">
+        <label class="field__label" for="settings-api-base">API 地址</label>
+        <input class="field__input" type="url" id="settings-api-base" placeholder="https://api.siliconflow.cn/v1">
+      </div>
+      <div class="field">
+        <label class="field__label" for="settings-api-key">API Key</label>
+        <div class="ai-settings-dialog__password-field">
+          <input class="field__input" type="password" id="settings-api-key" placeholder="sk-...">
+          <button type="button" class="btn btn--ghost ai-settings-dialog__toggle-key" id="btn-toggle-key" title="显示/隐藏"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/><path d="M8 1C4.5 1 2 4 2 8s2.5 7 6 7 6-3 6-7-2.5-7-6-7z"/></svg></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field__label" for="settings-model">模型</label>
+        <input class="field__input" type="text" id="settings-model" placeholder="Qwen/Qwen3.6-27B">
+      </div>
+      <div class="ai-settings-dialog__actions">
+        <button type="button" class="btn btn--secondary" id="btn-settings-cancel">取消</button>
+        <button type="submit" class="btn btn--primary" id="btn-settings-save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="styles.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+</html>
