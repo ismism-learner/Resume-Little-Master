@@ -57,13 +57,13 @@
         <span>存档</span>
       </button>
 
-      <button class="btn btn--primary" id="btn-export" title="导出PDF">
+      <button class="btn btn--primary" id="btn-export" title="打印/导出PDF">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/>
           <path d="M8 2v8"/>
           <path d="M5 7l3 3 3-3"/>
         </svg>
-        导出 PDF
+        打印/PDF
       </button>
     </div>
     <div class="topbar__save-info">
@@ -171,9 +171,26 @@
                 <label class="field__label" for="address">地址</label>
                 <input class="field__input" type="text" id="address" data-field="address" placeholder="北京市朝阳区" autocomplete="address-level2">
               </div>
+              <div class="field--row">
+                <div class="field">
+                  <label class="field__label" for="workYears">工作年限</label>
+                  <input class="field__input" type="text" id="workYears" data-field="workYears" placeholder="5年">
+                </div>
+                <div class="field">
+                  <label class="field__label" for="expectedSalary">期望薪资</label>
+                  <input class="field__input" type="text" id="expectedSalary" data-field="expectedSalary" placeholder="15-20K">
+                </div>
+              </div>
               <div class="field">
-                <label class="field__label" for="summary">个人简介</label>
-                <textarea class="field__textarea" id="summary" data-field="summary" placeholder="5年前端开发经验，精通 React、Vue 等主流框架，具备良好的团队协作能力和项目管理经验。"></textarea>
+                <label class="field__label" for="availability">到岗情况</label>
+                <select class="field__input" id="availability" data-field="availability">
+                  <option value="">请选择</option>
+                  <option value="随时到岗">随时到岗</option>
+                  <option value="一周内">一周内</option>
+                  <option value="两周内">两周内</option>
+                  <option value="一个月内">一个月内</option>
+                  <option value="待定">待定</option>
+                </select>
               </div>
             </div>
           </div>
@@ -249,6 +266,26 @@
           <div class="section__body-inner">
             <div class="section__content" id="projects-entries">
               <!-- Project entries rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自我评价 -->
+      <div class="section" data-section="selfEvaluation">
+        <button class="section__header" aria-expanded="true">
+          <span>自我评价</span>
+          <svg class="section__chevron" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
+          </svg>
+        </button>
+        <div class="section__body">
+          <div class="section__body-inner">
+            <div class="section__content">
+              <div class="field">
+                <label class="field__label" for="selfEvaluation">自我评价（建议120字以内）</label>
+                <textarea class="field__textarea" id="selfEvaluation" data-field="selfEvaluation" placeholder="5年前端开发经验，精通 React、Vue 等主流框架，具备良好的团队协作能力和项目管理经验。"></textarea>
+              </div>
             </div>
           </div>
         </div>

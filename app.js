@@ -14,9 +14,11 @@
     phone: '',
     email: '',
     address: '',
-    summary: '',
+    workYears: '',
+    expectedSalary: '',
+    availability: '',
     photo: '',
-    photoPosition: 'left',  // 'left' | 'right' | 'top' | 'hidden'
+    photoPosition: 'left',  // 'left' | 'right' | 'hidden'
     photoSize: 'large',    // 'small' | 'medium' | 'large'
     work: [
       { company: '', position: '', startDate: '', endDate: '', description: '' }
@@ -27,18 +29,20 @@
     skills: [],
     projects: [
       { name: '', role: '', description: '', link: '' }
-    ]
+    ],
+    selfEvaluation: ''
   };
 
   /** Section order — controls both editor and preview rendering order */
-  let sectionOrder = ['work', 'education', 'skills', 'projects'];
+  let sectionOrder = ['work', 'education', 'skills', 'projects', 'selfEvaluation'];
 
   /** Section labels for rendering */
   const sectionLabels = {
     work: '工作经历',
     education: '教育背景',
     skills: '技能特长',
-    projects: '项目经历'
+    projects: '项目经历',
+    selfEvaluation: '自我评价'
   };
 
   // ============================================================
@@ -552,6 +556,9 @@
       if (d.phone) contactItems.push(d.phone);
       if (d.email) contactItems.push(d.email);
       if (d.address) contactItems.push(d.address);
+      if (d.workYears) contactItems.push(d.workYears + '经验');
+      if (d.expectedSalary) contactItems.push('期望' + d.expectedSalary);
+      if (d.availability) contactItems.push(d.availability);
 
       if (contactItems.length > 0) {
         html += '  <div class="resume__contact">';
@@ -565,11 +572,6 @@
         html += '    <span class="resume__contact-item placeholder">zhangsan@email.com</span>';
         html += '    <span class="resume__contact-item placeholder">北京市朝阳区</span>';
         html += '  </div>';
-      }
-
-      // Summary
-      if (d.summary) {
-        html += '  <div class="resume__summary">' + esc(d.summary) + '</div>';
       }
 
       html += '</div>'; // resume__header-text
@@ -595,6 +597,9 @@
             break;
           case 'projects':
             html += renderProjectsPreviewSection(d);
+            break;
+          case 'selfEvaluation':
+            html += renderSelfEvaluationSection(d);
             break;
         }
       });
@@ -629,7 +634,16 @@
       if (d.address) {
         sidebarHtml += '<span class="resume__sidebar-contact-item">' + esc(d.address) + '</span>';
       }
-      if (!d.phone && !d.email && !d.address) {
+      if (d.workYears) {
+        sidebarHtml += '<span class="resume__sidebar-contact-item">' + esc(d.workYears) + '经验</span>';
+      }
+      if (d.expectedSalary) {
+        sidebarHtml += '<span class="resume__sidebar-contact-item">期望' + esc(d.expectedSalary) + '</span>';
+      }
+      if (d.availability) {
+        sidebarHtml += '<span class="resume__sidebar-contact-item">' + esc(d.availability) + '</span>';
+      }
+      if (!d.phone && !d.email && !d.address && !d.workYears && !d.expectedSalary && !d.availability) {
         sidebarHtml += '<span class="resume__sidebar-contact-item placeholder">138-0000-0000</span>';
         sidebarHtml += '<span class="resume__sidebar-contact-item placeholder">zhangsan@email.com</span>';
         sidebarHtml += '<span class="resume__sidebar-contact-item placeholder">北京市朝阳区</span>';
@@ -637,14 +651,6 @@
       sidebarHtml += '</div>';
 
       // --- MAIN CONTENT ---
-      // Summary (always first in main)
-      if (d.summary) {
-        mainHtml += '<div class="resume__section">';
-        mainHtml += '  <div class="resume__section-title">个人简介</div>';
-        mainHtml += '  <div class="resume__summary">' + esc(d.summary) + '</div>';
-        mainHtml += '</div>';
-      }
-
       // Sections in sectionOrder — route to sidebar or main
       sectionOrder.forEach(sectionKey => {
         switch (sectionKey) {
@@ -659,6 +665,9 @@
             break;
           case 'projects':
             mainHtml += renderModernProjectsSection(d);
+            break;
+          case 'selfEvaluation':
+            mainHtml += renderSelfEvaluationSection(d);
             break;
         }
       });
@@ -694,6 +703,9 @@
       if (d.phone) contactItems.push(d.phone);
       if (d.email) contactItems.push(d.email);
       if (d.address) contactItems.push(d.address);
+      if (d.workYears) contactItems.push(d.workYears + '经验');
+      if (d.expectedSalary) contactItems.push('期望' + d.expectedSalary);
+      if (d.availability) contactItems.push(d.availability);
 
       if (contactItems.length > 0) {
         contactItems.forEach(item => {
@@ -706,11 +718,6 @@
       }
       html += '  </div>';
       html += '</div>';
-
-      // Summary — larger, italic
-      if (d.summary) {
-        html += '<div class="resume__creative-summary">' + esc(d.summary) + '</div>';
-      }
 
       // --- Sections in sectionOrder ---
       sectionOrder.forEach(sectionKey => {
@@ -726,6 +733,9 @@
             break;
           case 'projects':
             html += renderCreativeProjectsSection(d);
+            break;
+          case 'selfEvaluation':
+            html += renderSelfEvaluationSection(d);
             break;
         }
       });
@@ -854,20 +864,14 @@
 
   function renderProjectsPreviewSection(d) {
     if (d.projects.length === 0) return '';
+    // Check if all projects are empty
+    const hasAnyContent = d.projects.some(p => p.name || p.role || p.description);
+    if (!hasAnyContent) return '';
+    
     let html = '<div class="resume__section">';
     html += '  <div class="resume__section-title">项目经历</div>';
     d.projects.forEach(p => {
       const hasContent = p.name || p.role || p.description;
-      if (!hasContent && d.projects.length === 1) {
-        html += '<div class="resume__entry">';
-        html += '  <div class="resume__entry-header">';
-        html += '    <span class="resume__entry-title placeholder">智能数据可视化平台</span>';
-        html += '  </div>';
-        html += '  <div class="resume__entry-subtitle placeholder">前端负责人</div>';
-        html += '  <div class="resume__entry-desc placeholder">主导前端架构设计，实现高性能数据可视化方案</div>';
-        html += '</div>';
-        return;
-      }
       if (!hasContent) return;
 
       html += '<div class="resume__entry">';
@@ -885,6 +889,15 @@
       }
       html += '</div>';
     });
+    html += '</div>';
+    return html;
+  }
+
+  function renderSelfEvaluationSection(d) {
+    if (!d.selfEvaluation) return '';
+    let html = '<div class="resume__section">';
+    html += '  <div class="resume__section-title">自我评价</div>';
+    html += '  <div class="resume__summary">' + esc(d.selfEvaluation) + '</div>';
     html += '</div>';
     return html;
   }
@@ -985,20 +998,14 @@
 
   function renderModernProjectsSection(d) {
     if (d.projects.length === 0) return '';
+    // Check if all projects are empty
+    const hasAnyContent = d.projects.some(p => p.name || p.role || p.description);
+    if (!hasAnyContent) return '';
+    
     let html = '<div class="resume__section">';
     html += '  <div class="resume__section-title">项目经历</div>';
     d.projects.forEach(p => {
       const hasContent = p.name || p.role || p.description;
-      if (!hasContent && d.projects.length === 1) {
-        html += '<div class="resume__entry">';
-        html += '  <div class="resume__entry-header">';
-        html += '    <span class="resume__entry-title placeholder">智能数据可视化平台</span>';
-        html += '  </div>';
-        html += '  <div class="resume__entry-subtitle placeholder">前端负责人</div>';
-        html += '  <div class="resume__entry-desc placeholder">主导前端架构设计，实现高性能数据可视化方案</div>';
-        html += '</div>';
-        return;
-      }
       if (!hasContent) return;
 
       html += '<div class="resume__entry">';
@@ -1116,20 +1123,14 @@
 
   function renderCreativeProjectsSection(d) {
     if (d.projects.length === 0) return '';
+    // Check if all projects are empty
+    const hasAnyContent = d.projects.some(p => p.name || p.role || p.description);
+    if (!hasAnyContent) return '';
+    
     let html = '<div class="resume__section">';
     html += '  <div class="resume__section-title">项目经历</div>';
     d.projects.forEach(p => {
       const hasContent = p.name || p.role || p.description;
-      if (!hasContent && d.projects.length === 1) {
-        html += '<div class="resume__entry">';
-        html += '  <div class="resume__entry-header">';
-        html += '    <span class="resume__entry-title placeholder">智能数据可视化平台</span>';
-        html += '  </div>';
-        html += '  <div class="resume__entry-subtitle placeholder">前端负责人</div>';
-        html += '  <div class="resume__entry-desc placeholder">主导前端架构设计，实现高性能数据可视化方案</div>';
-        html += '</div>';
-        return;
-      }
       if (!hasContent) return;
 
       html += '<div class="resume__entry">';
@@ -2305,8 +2306,8 @@
         case 'project-description':
           this._checkDescription(value, suggestions);
           break;
-        case 'summary':
-          this._checkSummary(value, suggestions);
+        case 'selfEvaluation':
+          this._checkSelfEvaluation(value, suggestions);
           break;
         case 'title':
         case 'position':
@@ -2374,11 +2375,11 @@
       }
     },
 
-    _checkSummary(value, suggestions) {
+    _checkSelfEvaluation(value, suggestions) {
       if (!value) {
         suggestions.push({
           type: 'tip',
-          text: '个人简介应突出核心优势和年资，如：\'8年全栈开发经验，擅长高并发系统架构\''
+          text: '自我评价应突出核心优势和年资，如：\'8年全栈开发经验，擅长高并发系统架构\''
         });
         return;
       }
@@ -2386,14 +2387,14 @@
       if (value.length < 30) {
         suggestions.push({
           type: 'tip',
-          text: '简介太短，建议补充2-3个核心优势'
+          text: '自我评价太短，建议补充2-3个核心优势'
         });
       }
 
-      if (value.length > 200) {
+      if (value.length > 150) {
         suggestions.push({
           type: 'tip',
-          text: '简介较长，建议精简到100字以内，突出最核心的3个优势'
+          text: '自我评价较长，建议精简到120字以内，突出最核心的3个优势'
         });
       }
     },
@@ -2447,8 +2448,8 @@
     const path = fieldEl.dataset.field;
     if (!path) return null;
 
-    // Summary
-    if (path === 'summary') return 'summary';
+    // Self evaluation
+    if (path === 'selfEvaluation') return 'selfEvaluation';
     // Title
     if (path === 'title') return 'title';
     // Work position
@@ -2465,7 +2466,7 @@
 
   /** Create and attach sparkle buttons to eligible fields */
   function attachSparkleButtons() {
-    // Textareas: summary, work descriptions, project descriptions
+    // Textareas: selfEvaluation, work descriptions, project descriptions
     const textareas = $$('.field__textarea[data-field]', editor);
     textareas.forEach(ta => {
       const type = getFieldAiType(ta);
@@ -3099,6 +3100,20 @@
 
     buildSystemPrompt(mode) {
       var prompt = '你是一位专业的简历撰写助手，服务于中国求职者。你会用中文回复。\n\n';
+      prompt += '【核心原则 - 必须遵守】\n';
+      prompt += '简历要质朴真实，不要吹牛。现在很多AI写的简历都在用"主导战略规划"、"搭建完整生态体系"、"全链路落地"、"统筹跨部门协作"等夸张词汇，HR一眼就能识别出是AI写的，直接淘汰。\n\n';
+      prompt += '禁止使用的词汇（除非用户真的是高管级别）：\n';
+      prompt += '- 主导战略、品牌战略、内容战略\n';
+      prompt += '- 搭建生态体系、完整生态\n';
+      prompt += '- 全链路落地、全链路打通\n';
+      prompt += '- 统筹平台、统筹跨部门\n';
+      prompt += '- 主导大型运营活动（应届生不可能做到）\n\n';
+      prompt += '正确做法：\n';
+      prompt += '- 写清楚具体做了哪些基础工作\n';
+      prompt += '- 用量化数据说明成果（提升了多少、完成了多少）\n';
+      prompt += '- 让HR能清楚了解你的能力模型\n';
+      prompt += '- 体现每段经历之间的进步和成长\n';
+      prompt += '- 如果用户描述过于夸张，要提醒用户并调整为合理表述\n\n';
       prompt += '你是一个智能代理(Agent)，可以直接通过工具调用来修改用户的简历数据，无需用户手动操作。\n\n';
       prompt += '可用工具说明：\n';
       prompt += '- read_resume: 读取当前简历完整数据。修改前应先调用此工具了解当前状态。\n';
@@ -3107,7 +3122,7 @@
       prompt += '- add_entry: 添加新的工作/教育/项目经历条目。\n';
       prompt += '- remove_entry: 删除指定的工作/教育/项目经历条目。\n';
       prompt += '- switch_template: 切换简历模板(classic/modern/creative)。\n';
-prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(small/medium/large)。\n\n';
+      prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(small/medium/large)。\n\n';
 
       if (mode === 'generate') {
         prompt += '当前任务：用户会描述自己的背景信息，请根据描述生成完整的简历。\n';
@@ -3120,6 +3135,8 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
         prompt += '1. 工作描述要具体，包含量化数据\n';
         prompt += '2. 每条工作描述用换行分隔不同要点，每行以"-"开头\n';
         prompt += '3. 日期格式为YYYY-MM\n';
+        prompt += '4. 自我评价(selfEvaluation)控制在120个中文字以内，突出核心优势\n';
+        prompt += '5. 技能特长(skills)如用户提供了语言能力或办公能力说明，请一并纳入\n';
       } else if (mode === 'optimize') {
         prompt += '当前任务：优化用户现有简历内容，使其更专业、更有说服力。\n';
         prompt += '操作步骤：\n';
@@ -3128,9 +3145,11 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
         prompt += '3. 使用update_field或batch_update逐个优化字段\n';
         prompt += '4. 最后用自然语言简要说明你做了哪些优化\n\n';
         prompt += '要求：\n';
-        prompt += '1. 使用更专业的动词和措辞\n';
+        prompt += '1. 使用更专业的动词和措辞，但不要过度包装\n';
         prompt += '2. 添加量化数据（如果原文有暗示但未明确）\n';
         prompt += '3. 保持原有结构和核心信息不变\n';
+        prompt += '4. 如果原文有夸张词汇（如"主导战略"、"搭建生态"），要降级为合理表述并提醒用户\n';
+        prompt += '5. 优化的目标是让HR清楚了解能力模型，不是吹牛\n';
       } else if (mode === 'diagnose') {
         prompt += '当前任务：对用户简历进行专业诊断分析。\n';
         prompt += '请对简历进行专业诊断，给出：\n';
@@ -3691,7 +3710,7 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
 
     isResumeEmpty() {
       const d = resumeData;
-      return !d.name && !d.title && !d.summary &&
+      return !d.name && !d.title && !d.selfEvaluation &&
         d.work.every(w => !w.company && !w.position && !w.description) &&
         d.education.every(e => !e.school && !e.major) &&
         d.skills.length === 0 &&
@@ -4023,6 +4042,10 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
 
     formatReasoningText(text) {
       let html = esc(text);
+      // Filter out AI-generated HTML tag artifacts (the AI sometimes outputs these in reasoning)
+      html = html.replace(/&lt;div class="ai-reasoning[^"]*"&gt;/gi, '');
+      html = html.replace(/&lt;div class="ai-reasoning-sep"&gt;&lt;\/div&gt;/gi, '');
+      html = html.replace(/&lt;\/div&gt;/gi, '');
       // Convert ```...``` code blocks
       html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre class="ai-code-block">$2</pre>');
       // Convert **bold** and __bold__
@@ -4138,7 +4161,7 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
     applyResumeData(data) {
       // Merge AI data into resumeData
       // For simple fields, only overwrite if AI provided non-empty value
-      const simpleFields = ['name', 'title', 'phone', 'email', 'address', 'summary'];
+      const simpleFields = ['name', 'title', 'phone', 'email', 'address', 'workYears', 'expectedSalary', 'availability', 'selfEvaluation'];
       simpleFields.forEach(field => {
         if (data[field] !== undefined && data[field] !== '') {
           resumeData[field] = data[field];
@@ -4196,7 +4219,7 @@ prompt += '- update_photo_style: 调整照片位置(left/right/hidden)和大小(
 
     syncEditorFromData() {
       // Update simple fields
-      const simpleFields = ['name', 'title', 'phone', 'email', 'address', 'summary'];
+      const simpleFields = ['name', 'title', 'phone', 'email', 'address', 'workYears', 'expectedSalary', 'availability', 'selfEvaluation'];
       simpleFields.forEach(field => {
         const input = $('#' + field);
         if (input && resumeData[field]) {
