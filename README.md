@@ -4,18 +4,27 @@
 
 ## 快速开始
 
-直接用浏览器打开即可使用，无需安装任何依赖。
+### 方法一：双击启动（推荐）
+
+Windows 用户直接双击 `start.bat` 即可，脚本会自动检测 Python 或 Node.js，启动本地服务器并打开浏览器。
+
+> 首次使用需安装 [Python](https://www.python.org/downloads/) 或 [Node.js](https://nodejs.org/)（安装时请勾选 "Add to PATH"）。
+
+### 方法二：手动启动
 
 ```bash
-# 方法一：直接双击打开
-# 双击 index.html 文件即可在浏览器中运行
+# Python
+python -m http.server 8080
 
-# 方法二：使用本地服务器（推荐，可正常使用导出 PDF 功能）
-npx serve .
-# 或
-python3 -m http.server 8080
-# 然后访问 http://localhost:8080
+# Node.js
+npx serve -l 8080 .
 ```
+
+然后访问 http://localhost:8080
+
+### 方法三：直接打开（不推荐）
+
+双击 `index.html` 可在浏览器中运行，但部分功能（如导出 PDF）可能因浏览器安全限制而无法使用。
 
 ## 功能概览
 
