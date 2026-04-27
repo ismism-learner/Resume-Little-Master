@@ -3098,6 +3098,37 @@
       } catch (e) { /* ignore */ }
     },
 
+    async fetchModels() {
+      if (!this.apiKey) {
+        throw new Error('请先填写 API Key');
+      }
+      // SiliconFlow supports type/sub_type filtering; other providers ignore unknown params
+      var url = this.apiBase + '/models';
+      if (this.apiBase.indexOf('siliconflow') !== -1) {
+        url += '?type=text&sub_type=chat';
+      }
+      var response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + this.apiKey
+        }
+      });
+      if (!response.ok) {
+        var errorText = await response.text();
+        var errorMsg = '获取模型列表失败 (' + response.status + ')';
+        try {
+          var errorJson = JSON.parse(errorText);
+          errorMsg = errorJson.error?.message || errorMsg;
+        } catch (e) { /* use default */ }
+        throw new Error(errorMsg);
+      }
+      var data = await response.json();
+      var models = (data.data || []).map(function(m) { return m.id; });
+      // Sort alphabetically
+      models.sort(function(a, b) { return a.localeCompare(b); });
+      return models;
+    },
+
     buildSystemPrompt(mode) {
       var prompt = '你是一位专业的简历撰写助手，服务于中国求职者。你会用中文回复。\n\n';
       prompt += '【核心原则 - 必须遵守】\n';
@@ -3150,15 +3181,19 @@
         prompt += '3. 保持原有结构和核心信息不变\n';
         prompt += '4. 如果原文有夸张词汇（如"主导战略"、"搭建生态"），要降级为合理表述并提醒用户\n';
         prompt += '5. 优化的目标是让HR清楚了解能力模型，不是吹牛\n';
-      } else if (mode === 'diagnose') {
-        prompt += '当前任务：对用户简历进行专业诊断分析。\n';
-        prompt += '请对简历进行专业诊断，给出：\n';
-        prompt += '1) 总体评分(0-100)\n';
-        prompt += '2) 各维度评分(内容完整性、措辞专业度、量化数据、格式规范)，每项0-100\n';
-        prompt += '3) 具体改进建议列表\n\n';
-        prompt += '请以如下JSON格式返回诊断结果，包裹在 ```diagnosis 和 ``` 之间：\n';
-        prompt += '```diagnosis\n{"overall":85,"dimensions":{"completeness":80,"professionalism":90,"quantification":70,"formatting":85},"suggestions":["建议1","建议2"]}\n```\n\n';
-        prompt += '在JSON之前先用自然语言给出诊断分析。\n';
+      } else if (mode === 'review') {
+        prompt += '当前任务：审阅用户上传的简历文档，给出专业建议。不要评分，只提建议。\n';
+        prompt += '请从以下角度分析简历：\n';
+        prompt += '1. 内容完整性：是否缺少关键信息（联系方式、教育背景、工作经历等）\n';
+        prompt += '2. 措辞专业性：是否有夸张、空洞或AI味重的表述\n';
+        prompt += '3. 量化数据：工作成果是否有具体数字支撑\n';
+        prompt += '4. 结构逻辑：经历是否有成长线，时间线是否连贯\n';
+        prompt += '5. 针对性：简历内容是否与目标职位匹配\n\n';
+        prompt += '输出格式：\n';
+        prompt += '- 先简要概括简历的整体印象（2-3句话）\n';
+        prompt += '- 然后逐条列出具体建议，每条建议要明确指出问题所在和改进方向\n';
+        prompt += '- 如果发现夸张或AI味重的表述，直接引用原文并给出修改建议\n';
+        prompt += '- 不要使用工具修改简历，只提供建议\n';
       } else {
         prompt += '当前任务：与用户对话，帮助撰写和修改简历。\n';
         prompt += '当用户提出修改简历的请求时：\n';
@@ -3317,21 +3352,89 @@
       } catch (e) {
         return null;
       }
-    },
-
-    parseDiagnosisData(response) {
-      const match = response.match(/```diagnosis\s*\n?([\s\S]*?)\n?```/);
-      if (!match) return null;
-      try {
-        return JSON.parse(match[1]);
-      } catch (e) {
-        return null;
-      }
     }
   };
 
   // Load settings on startup
   AIService.loadSettings();
+
+  // ============================================================
+  // 11b. FILE PARSER (PDF / DOCX)
+  // ============================================================
+
+  var FileParser = {
+    _pdfLoaded: false,
+    _mammothLoaded: false,
+
+    _loadScript(url) {
+      return new Promise(function(resolve, reject) {
+        var script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = function() { reject(new Error('无法加载: ' + url)); };
+        document.head.appendChild(script);
+      });
+    },
+
+    async ensurePDF() {
+      if (this._pdfLoaded && typeof pdfjsLib !== 'undefined') return;
+      await this._loadScript('lib/pdf.min.js');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+      this._pdfLoaded = true;
+    },
+
+    async ensureMammoth() {
+      if (this._mammothLoaded && typeof mammoth !== 'undefined') return;
+      await this._loadScript('lib/mammoth.browser.min.js');
+      this._mammothLoaded = true;
+    },
+
+    async extractText(file) {
+      var name = file.name.toLowerCase();
+      if (name.endsWith('.pdf')) {
+        return await this.extractPDF(file);
+      } else if (name.endsWith('.docx')) {
+        return await this.extractDOCX(file);
+      } else if (name.endsWith('.doc')) {
+        throw new Error('暂不支持 .doc 格式，请将文件另存为 .docx 后重试');
+      } else {
+        throw new Error('不支持的文件格式，请上传 PDF 或 DOCX 文件');
+      }
+    },
+
+    async extractPDF(file) {
+      await this.ensurePDF();
+      var arrayBuffer = await file.arrayBuffer();
+      var pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      var textParts = [];
+
+      for (var i = 1; i <= pdf.numPages; i++) {
+        var page = await pdf.getPage(i);
+        var content = await page.getTextContent();
+        var pageText = content.items.map(function(item) { return item.str; }).join(' ');
+        if (pageText.trim()) {
+          textParts.push(pageText.trim());
+        }
+      }
+
+      if (textParts.length === 0) {
+        throw new Error('该 PDF 没有文字层（可能是扫描件），无法提取文字内容');
+      }
+
+      return textParts.join('\n');
+    },
+
+    async extractDOCX(file) {
+      await this.ensureMammoth();
+      var arrayBuffer = await file.arrayBuffer();
+      var result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      var text = result.value.trim();
+      if (!text) {
+        throw new Error('该文档内容为空，无法提取文字');
+      }
+      return text;
+    }
+  };
 
   // ============================================================
   // 12. AI CHAT CONTROLLER
@@ -3342,7 +3445,7 @@
     activeConversationId: null,
     messages: [],       // Shortcut: points to active conversation's messages
     isGenerating: false,
-    currentMode: null,  // 'generate' | 'optimize' | 'diagnose' | null
+    currentMode: null,  // 'generate' | 'optimize' | 'review' | null
     MAX_CONVERSATIONS: 20,
 
     init() {
@@ -3438,6 +3541,14 @@
         keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
       });
 
+      // Scan models button
+      var btnScanModels = $('#btn-scan-models');
+      if (btnScanModels) {
+        btnScanModels.addEventListener('click', () => {
+          this.scanModels();
+        });
+      }
+
       // New conversation button
       var btnNewChat = $('#btn-ai-new-chat');
       if (btnNewChat) {
@@ -3467,7 +3578,7 @@
       if (this.messages.length > 0) {
         this.renderChatMessages();
       } else {
-        this.addSystemMessage('你好！我是AI简历助手，可以帮你撰写、优化和诊断简历。');
+        this.addSystemMessage('你好！我是AI简历助手，可以帮你撰写和优化简历。');
       }
     },
 
@@ -3475,6 +3586,12 @@
       $('#settings-api-base').value = AIService.apiBase;
       $('#settings-api-key').value = AIService.apiKey;
       $('#settings-model').value = AIService.model;
+      // Clear and hide previous model list
+      var listEl = $('#ai-model-list');
+      if (listEl) {
+        listEl.innerHTML = '';
+        listEl.classList.add('ai-model-list--hidden');
+      }
     },
 
     // --- Conversation Management ---
@@ -3655,7 +3772,7 @@
       // Clear chat display
       var container = $('#ai-messages');
       container.innerHTML = '';
-      this.addSystemMessage('你好！我是AI简历助手，可以帮你撰写、优化和诊断简历。');
+      this.addSystemMessage('你好！我是AI简历助手，可以帮你撰写和优化简历。');
       this.renderHistoryList();
     },
 
@@ -3665,6 +3782,63 @@
       AIService.model = $('#settings-model').value.trim() || 'gpt-4o-mini';
       AIService.saveSettings();
       this.addSystemMessage('API 设置已保存');
+    },
+
+    async scanModels() {
+      var btn = $('#btn-scan-models');
+      var listEl = $('#ai-model-list');
+
+      // Temporarily save form values so fetchModels uses current API base/key
+      var tempBase = $('#settings-api-base').value.trim();
+      var tempKey = $('#settings-api-key').value.trim();
+      if (tempBase) AIService.apiBase = tempBase;
+      if (tempKey) AIService.apiKey = tempKey;
+
+      // Show loading state
+      btn.disabled = true;
+      btn.classList.add('ai-settings-dialog__scan-btn--loading');
+      listEl.classList.remove('ai-model-list--hidden');
+      listEl.innerHTML = '<div class="ai-model-list__loading">扫描中...</div>';
+
+      try {
+        var models = await AIService.fetchModels();
+        if (models.length === 0) {
+          listEl.innerHTML = '<div class="ai-model-list__empty">未找到可用模型</div>';
+          return;
+        }
+        // Render model list
+        var html = '';
+        models.forEach(function(id) {
+          html += '<button type="button" class="ai-model-list__item" data-model="' + esc(id) + '">' + esc(id) + '</button>';
+        });
+        listEl.innerHTML = html;
+
+        // Bind click events to select model
+        var items = listEl.querySelectorAll('.ai-model-list__item');
+        items.forEach(function(item) {
+          item.addEventListener('click', function() {
+            $('#settings-model').value = item.dataset.model;
+            // Highlight selected
+            items.forEach(function(i) { i.classList.remove('ai-model-list__item--active'); });
+            item.classList.add('ai-model-list__item--active');
+          });
+        });
+
+        // Highlight current model if it's in the list
+        var currentModel = $('#settings-model').value.trim();
+        if (currentModel) {
+          items.forEach(function(item) {
+            if (item.dataset.model === currentModel) {
+              item.classList.add('ai-model-list__item--active');
+            }
+          });
+        }
+      } catch (error) {
+        listEl.innerHTML = '<div class="ai-model-list__error">' + esc(error.message) + '</div>';
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('ai-settings-dialog__scan-btn--loading');
+      }
     },
 
     handleQuickAction(action) {
@@ -3696,14 +3870,18 @@
           }
           this.sendToAI('请优化我的简历内容', 'optimize');
           break;
-        case 'diagnose':
-          this.currentMode = 'diagnose';
-          if (this.isResumeEmpty()) {
-            this.addAIMessage('简历内容为空，无法进行诊断。请先填写一些基本信息。');
-            this.currentMode = null;
-            return;
-          }
-          this.sendToAI('请对我的简历进行专业诊断', 'diagnose');
+        case 'review':
+          // Dynamically create file input to avoid browser security restrictions
+          var input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.pdf,.docx,.doc';
+          input.style.display = 'none';
+          document.body.appendChild(input);
+          input.addEventListener('change', (e) => {
+            this.handleFileUpload(e);
+            document.body.removeChild(input);
+          });
+          input.click();
           break;
       }
     },
@@ -3715,6 +3893,36 @@
         d.education.every(e => !e.school && !e.major) &&
         d.skills.length === 0 &&
         d.projects.every(p => !p.name && !p.description);
+    },
+
+    async handleFileUpload(event) {
+      var file = event.target.files[0];
+      // Reset input so same file can be re-uploaded
+      event.target.value = '';
+
+      if (!file) {
+        this.currentMode = null;
+        return;
+      }
+
+      this.currentMode = 'review';
+      var fileName = file.name;
+      this.addUserMessage('上传文件：' + fileName);
+
+      try {
+        var text = await FileParser.extractText(file);
+
+        // Truncate if too long (most APIs have context limits)
+        var maxLen = 8000;
+        if (text.length > maxLen) {
+          text = text.substring(0, maxLen) + '\n\n[... 文档内容过长，已截断 ...]';
+        }
+
+        this.sendToAI('请审阅以下简历内容，给出专业建议（不要评分）：\n\n---\n' + text + '\n---', 'review');
+      } catch (error) {
+        this.addAIMessage('文件读取失败：' + error.message);
+        this.currentMode = null;
+      }
     },
 
     sendUserMessage() {
@@ -3746,7 +3954,12 @@
       const recentMessages = this.messages.slice(-10);
       recentMessages.forEach(function(m) {
         if (m.role === 'user' || m.role === 'assistant') {
-          apiMessages.push({ role: m.role, content: m.content });
+          var msg = { role: m.role, content: m.content };
+          // SiliconFlow thinking models require reasoning_content to be passed back
+          if (m.role === 'assistant' && m.reasoning_content) {
+            msg.reasoning_content = m.reasoning_content;
+          }
+          apiMessages.push(msg);
         }
       });
 
@@ -3763,6 +3976,7 @@
       // Create AI message element for streaming
       var aiMsgEl = this.createAIMessageElement();
       var fullResponse = '';
+      var lastReasoningContent = '';
       var MAX_AGENT_ITERATIONS = 10;
 
       try {
@@ -3884,6 +4098,10 @@
               };
             })
           };
+          // SiliconFlow thinking models require reasoning_content to be passed back
+          if (reasoningContent) {
+            assistantMsg.reasoning_content = reasoningContent;
+          }
           apiMessages.push(assistantMsg);
 
           // Execute each tool call and add results
@@ -3916,13 +4134,22 @@
           // Sync editor from data after tool execution
           this.syncEditorFromData();
 
+          // Save reasoning content from this iteration before resetting
+          if (reasoningContent) {
+            lastReasoningContent = reasoningContent;
+          }
+
           // Reset for next iteration — create a new AI message element for the follow-up response
           aiMsgEl = this.createAIMessageElement();
           fullResponse = '';
         }
 
-        // Store the final text response
-        this.messages.push({ role: 'assistant', content: fullResponse });
+        // Store the final text response (with reasoning_content for thinking models)
+        var storedMsg = { role: 'assistant', content: fullResponse };
+        if (reasoningContent || lastReasoningContent) {
+          storedMsg.reasoning_content = reasoningContent || lastReasoningContent;
+        }
+        this.messages.push(storedMsg);
         this.updateConversationTitle();
         this.saveConversations();
 
@@ -3930,12 +4157,6 @@
         const parsedResume = AIService.parseResumeData(fullResponse);
         if (parsedResume) {
           this.addApplyButton(aiMsgEl, parsedResume);
-        }
-
-        // Check for diagnosis data
-        const diagnosisData = AIService.parseDiagnosisData(fullResponse);
-        if (diagnosisData) {
-          this.renderScoreCard(aiMsgEl, diagnosisData);
         }
 
       } catch (error) {
@@ -4024,6 +4245,12 @@
       // Check if this is a thinking indicator (raw HTML, not user content)
       if (text.startsWith('<span class="ai-thinking-indicator">')) {
         el.innerHTML = text;
+      } else if (text.indexOf('<div class="ai-reasoning">') !== -1) {
+        // Content has reasoning blocks — split into reasoning (raw HTML) and text (escaped)
+        var parts = text.split('<div class="ai-reasoning-sep"></div>');
+        var reasoningHtml = parts[0] || '';
+        var textContent = parts[1] || '';
+        el.innerHTML = reasoningHtml + this.formatMessageText(textContent);
       } else {
         el.innerHTML = this.formatMessageText(text);
       }
@@ -4083,59 +4310,6 @@
         btn.style.cursor = 'default';
       });
       msgEl.appendChild(btn);
-    },
-
-    renderScoreCard(msgEl, data) {
-      const overall = data.overall || 0;
-      const dims = data.dimensions || {};
-      const suggestions = data.suggestions || [];
-
-      const overallClass = overall < 60 ? 'ai-score-card__number--low' :
-                           overall < 80 ? 'ai-score-card__number--mid' :
-                           'ai-score-card__number--high';
-
-      const dimLabels = {
-        completeness: '内容完整性',
-        professionalism: '措辞专业度',
-        quantification: '量化数据',
-        formatting: '格式规范'
-      };
-
-      let cardHtml = '<div class="ai-score-card">';
-      cardHtml += '<div class="ai-score-card__overall">';
-      cardHtml += '<div class="ai-score-card__number ' + overallClass + '">' + overall + '</div>';
-      cardHtml += '<div class="ai-score-card__label">综合评分</div>';
-      cardHtml += '</div>';
-      cardHtml += '<div class="ai-score-card__dimensions">';
-
-      Object.keys(dims).forEach(key => {
-        const val = dims[key];
-        const label = dimLabels[key] || key;
-        const color = val < 60 ? 'oklch(0.55 0.15 25)' :
-                      val < 80 ? 'oklch(0.68 0.12 80)' :
-                      'oklch(0.55 0.12 145)';
-        cardHtml += '<div class="ai-score-dim">';
-        cardHtml += '<span class="ai-score-dim__label">' + esc(label) + '</span>';
-        cardHtml += '<div class="ai-score-dim__bar"><div class="ai-score-dim__fill" style="width:' + val + '%;background-color:' + color + '"></div></div>';
-        cardHtml += '<span class="ai-score-dim__value">' + val + '</span>';
-        cardHtml += '</div>';
-      });
-
-      cardHtml += '</div>';
-
-      if (suggestions.length > 0) {
-        cardHtml += '<div class="ai-score-suggestions">';
-        cardHtml += '<div class="ai-score-suggestions__title">改进建议</div>';
-        cardHtml += '<ul class="ai-score-suggestions__list">';
-        suggestions.forEach(s => {
-          cardHtml += '<li class="ai-score-suggestions__item">' + esc(s) + '</li>';
-        });
-        cardHtml += '</ul></div>';
-      }
-
-      cardHtml += '</div>';
-      msgEl.insertAdjacentHTML('beforeend', cardHtml);
-      this.scrollToBottom();
     },
 
     // --- Typing Indicator ---

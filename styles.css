@@ -1670,120 +1670,6 @@ a:hover {
   animation: field-highlight 1.5s ease-out;
 }
 
-/* --- Score Card (Diagnosis) --- */
-.ai-score-card {
-  margin-top: var(--space-3);
-  padding: var(--space-4);
-  background-color: var(--neutral-2);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--neutral-3);
-}
-
-.ai-score-card__overall {
-  text-align: center;
-  margin-bottom: var(--space-4);
-}
-
-.ai-score-card__number {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  line-height: 1;
-}
-
-.ai-score-card__number--low {
-  color: oklch(0.55 0.15 25);
-}
-
-.ai-score-card__number--mid {
-  color: oklch(0.68 0.12 80);
-}
-
-.ai-score-card__number--high {
-  color: oklch(0.55 0.12 145);
-}
-
-.ai-score-card__label {
-  font-size: var(--text-xs);
-  color: var(--neutral-5);
-  margin-top: var(--space-1);
-}
-
-.ai-score-card__dimensions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.ai-score-dim {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.ai-score-dim__label {
-  font-size: var(--text-xs);
-  color: var(--neutral-6);
-  min-width: 4.5rem;
-  flex-shrink: 0;
-}
-
-.ai-score-dim__bar {
-  flex: 1;
-  height: 6px;
-  background-color: var(--neutral-3);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ai-score-dim__fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 600ms ease-out;
-}
-
-.ai-score-dim__value {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--neutral-7);
-  min-width: var(--icon-size-md);
-  text-align: right;
-}
-
-.ai-score-suggestions {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--neutral-3);
-}
-
-.ai-score-suggestions__title {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--neutral-6);
-  margin-bottom: var(--space-2);
-}
-
-.ai-score-suggestions__list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.ai-score-suggestions__item {
-  font-size: var(--text-xs);
-  color: var(--neutral-7);
-  padding-left: var(--space-4);
-  position: relative;
-}
-
-.ai-score-suggestions__item::before {
-  content: '→';
-  position: absolute;
-  left: 0;
-  color: var(--color-brand);
-}
-
 /* ============================================================
    9b. API SETTINGS DIALOG
    ============================================================ */
@@ -1835,6 +1721,81 @@ a:hover {
   min-width: var(--touch-min);
   padding: var(--space-2);
   flex-shrink: 0;
+}
+
+.ai-settings-dialog__model-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.ai-settings-dialog__model-field .field__input {
+  flex: 1;
+}
+
+.ai-settings-dialog__scan-btn {
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  padding: var(--space-2);
+  flex-shrink: 0;
+}
+
+.ai-settings-dialog__scan-btn--loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ai-model-list {
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--neutral-3);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-1);
+}
+
+.ai-model-list--hidden {
+  display: none;
+}
+
+.ai-model-list__loading,
+.ai-model-list__empty,
+.ai-model-list__error {
+  padding: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--neutral-5);
+  text-align: center;
+}
+
+.ai-model-list__error {
+  color: oklch(0.55 0.15 25);
+}
+
+.ai-model-list__item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+  color: var(--neutral-7);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--neutral-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-model-list__item:last-child {
+  border-bottom: none;
+}
+
+.ai-model-list__item:hover {
+  background-color: var(--neutral-2);
+}
+
+.ai-model-list__item--active {
+  background-color: oklch(0.95 0.02 var(--color-brand-h));
+  color: var(--color-brand);
+  font-weight: var(--weight-semibold);
 }
 
 /* ============================================================
